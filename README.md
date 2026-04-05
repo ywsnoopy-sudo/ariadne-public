@@ -6,16 +6,16 @@
 
 > [English version below](#ariadne--session-wrap-up-for-claude-code)
 
-Ariadne는 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 커스텀 스킬로, 세션 간 컨텍스트 손실을 방지합니다. 오래된 메모리 파일, 고아 참조, 유령 링크, 인덱스 비대화를 감지하고 정리합니다.
+Ariadne는 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 커스텀 스킬로, 세션 간 컨텍스트 손실을 방지합니다. 오래된 메모리 파일, orphan 참조, ghost 링크, index bloat를 감지하고 정리합니다.
 
 ## 문제
 
 Claude Code의 자동 메모리 시스템은 세션마다 `~/.claude/projects/<id>/memory/`에 `.md` 파일을 축적합니다. 관리 없이는:
 
 - 메모리 파일이 **낡아짐** (삭제된 기능이나 이전 버전을 참조)
-- **고아** 파일 누적 (디스크에 존재하지만 MEMORY.md에 미등록)
-- **유령** 참조 잔존 (MEMORY.md가 존재하지 않는 파일을 가리킴)
-- 인덱스가 **비대화**되어 컨텍스트 윈도우 낭비
+- **Orphan** 파일 누적 (디스크에 존재하지만 MEMORY.md에 미등록)
+- **Ghost** 참조 잔존 (MEMORY.md가 존재하지 않는 파일을 가리킴)
+- Index가 **bloat**되어 컨텍스트 윈도우 낭비
 
 이를 관리하는 빌트인 도구는 없습니다. Ariadne가 이 공백을 채웁니다.
 
@@ -23,8 +23,8 @@ Claude Code의 자동 메모리 시스템은 세션마다 `~/.claude/projects/<i
 
 세션 종료 시 실행하는 3단계 절차:
 
-1. **파일 감사** — 세션 중 수정된 파일 탐지, 고아 아티팩트 확인
-2. **메모리 라이프사이클 감사** — 버전 검증, 노후화 검사, 고아/유령 탐지, 인덱스 규칙 적용, 안티패턴 점검
+1. **File Audit** — 세션 중 수정된 파일 탐지, orphan 아티팩트 확인
+2. **Memory Lifecycle Audit** — 버전 검증, staleness 검사, orphan/ghost 탐지, index 규칙 적용, anti-pattern 점검
 3. **세션 브리프** — MEMORY.md에 구조화된 세션 요약 작성
 
 추가로 **PreToolUse 훅** (`ariadne_thread.sh`)이 잘못된 메모리 파일 생성을 사전 차단합니다.
