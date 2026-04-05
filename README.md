@@ -1,5 +1,9 @@
 # Ariadne — Session Wrap-Up for Claude Code
 
+<p align="center">
+  <img src="assets/banner.png" alt="Ariadne — The Thread between sessions" width="600">
+</p>
+
 Ariadne is a [Claude Code](https://docs.anthropic.com/en/docs/claude-code) custom skill that prevents context loss between sessions. It enforces memory hygiene — catching stale files, orphan references, ghost links, and index bloat before they degrade Claude's context quality.
 
 ## The Problem
