@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/ariadne_thread.sh",
+            "timeout": 3
+          }
+        ]
+      }
+    ]
+  }
+}
