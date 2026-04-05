@@ -1,8 +1,125 @@
-# Ariadne — Session Wrap-Up for Claude Code
+# Ariadne — Claude Code 세션 정리 스킬
 
 <p align="center">
-  <img src="assets/banner.png" alt="Ariadne — The Thread between sessions" width="600">
+  <img src="assets/banner.png" alt="Ariadne — 세션 사이의 실" width="600">
 </p>
+
+> [English version below](#ariadne--session-wrap-up-for-claude-code)
+
+Ariadne는 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 커스텀 스킬로, 세션 간 컨텍스트 손실을 방지합니다. 오래된 메모리 파일, 고아 참조, 유령 링크, 인덱스 비대화를 감지하고 정리합니다.
+
+## 문제
+
+Claude Code의 자동 메모리 시스템은 세션마다 `~/.claude/projects/<id>/memory/`에 `.md` 파일을 축적합니다. 관리 없이는:
+
+- 메모리 파일이 **낡아짐** (삭제된 기능이나 이전 버전을 참조)
+- **고아** 파일 누적 (디스크에 존재하지만 MEMORY.md에 미등록)
+- **유령** 참조 잔존 (MEMORY.md가 존재하지 않는 파일을 가리킴)
+- 인덱스가 **비대화**되어 컨텍스트 윈도우 낭비
+
+이를 관리하는 빌트인 도구는 없습니다. Ariadne가 이 공백을 채웁니다.
+
+## 기능
+
+세션 종료 시 실행하는 3단계 절차:
+
+1. **파일 감사** — 세션 중 수정된 파일 탐지, 고아 아티팩트 확인
+2. **메모리 라이프사이클 감사** — 버전 검증, 노후화 검사, 고아/유령 탐지, 인덱스 규칙 적용, 안티패턴 점검
+3. **세션 브리프** — MEMORY.md에 구조화된 세션 요약 작성
+
+추가로 **PreToolUse 훅** (`ariadne_thread.sh`)이 잘못된 메모리 파일 생성을 사전 차단합니다.
+
+### 훅 작동 방식
+
+훅은 우선순위 체인을 따르며 첫 번째 매칭 조건에서 조기 종료합니다:
+
+```
+Write 도구 호출
+  │
+  ├─ 메모리 디렉토리 밖?      → 통과 (관할 외)
+  ├─ MEMORY.md 파일?          → 통과 (인덱스 편집은 항상 허용)
+  ├─ Write 도구가 아님?       → 통과 (기존 파일 Edit은 허용)
+  ├─ 파일이 이미 존재?        → 통과 (새 파일 생성만 검사)
+  │
+  ├─ 검사 1: 본문 ≤3줄?      → 차단 "MEMORY.md에 인라인으로 작성하세요"
+  └─ 검사 2: type: feedback?  → 차단 "피드백은 MEMORY.md에 인라인으로"
+```
+
+**검사 순서 참고**: feedback 타입 파일이 3줄 이하인 경우, 검사 1이 먼저 작동합니다.
+검사 1을 우회하기 위해 줄을 추가해도 검사 2가 차단합니다. feedback 파일은 길이와
+무관하게 항상 거부됩니다.
+
+## 설치
+
+### 1. 스킬 복사
+
+```bash
+mkdir -p ~/.claude/skills/ariadne-public
+cp SKILL.md ~/.claude/skills/ariadne-public/SKILL.md
+```
+
+### 2. 훅 복사
+
+```bash
+cp hooks/ariadne_thread.sh ~/.claude/hooks/ariadne_thread.sh
+chmod +x ~/.claude/hooks/ariadne_thread.sh
+```
+
+### 3. 훅 등록
+
+`~/.claude/settings.json`의 `hooks.PreToolUse`에 추가:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/ariadne_thread.sh",
+            "timeout": 3
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+[`examples/settings.json`](examples/settings.json)에서 전체 예시를 확인하세요.
+
+### 4. 메모리 디렉토리 설정 (선택)
+
+```bash
+export ARIADNE_MEMORY_DIR="$HOME/.claude/projects/<your-project-id>/memory"
+```
+
+미설정 시 `~/.claude/projects/*/memory/MEMORY.md`에서 자동 탐지합니다.
+
+## 사용법
+
+세션 종료 시 Claude에게:
+
+```
+/wrap-up
+```
+
+또는 "wrap up"이라고 말하면 Ariadne가 3단계 절차를 실행하고 정리 보고서를 출력합니다.
+
+## 요구사항
+
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (커스텀 스킬 지원)
+- `jq` (ariadne_thread.sh에서 사용 — 대부분의 시스템에 기본 설치)
+
+## 라이선스
+
+GPL-3.0 — [LICENSE](LICENSE) 참조.
+
+---
+
+# Ariadne — Session Wrap-Up for Claude Code
 
 Ariadne is a [Claude Code](https://docs.anthropic.com/en/docs/claude-code) custom skill that prevents context loss between sessions. It enforces memory hygiene — catching stale files, orphan references, ghost links, and index bloat before they degrade Claude's context quality.
 
