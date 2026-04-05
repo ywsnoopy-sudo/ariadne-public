@@ -1,4 +1,4 @@
-# Ariadne — Claude Code 세션 정리 스킬
+# Ariadne — Claude Code Session Wrap-Up Skill
 
 <p align="center">
   <img src="assets/banner.png" alt="Ariadne — 세션 사이의 실" width="600">
@@ -6,18 +6,18 @@
 
 > [English version below](#ariadne--session-wrap-up-for-claude-code)
 
-Ariadne는 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 커스텀 스킬로, 세션 간 컨텍스트 손실을 방지합니다. 오래된 메모리 파일, orphan 참조, ghost 링크, index bloat를 감지하고 정리합니다.
+Ariadne는 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) custom skill로, 세션 간 context 손실을 방지합니다. 오래된 memory 파일, orphan 참조, ghost 링크, index bloat를 감지하고 정리합니다.
 
 ## 문제
 
-Claude Code의 자동 메모리 시스템은 세션마다 `~/.claude/projects/<id>/memory/`에 `.md` 파일을 축적합니다. 관리 없이는:
+Claude Code의 auto-memory 시스템은 세션마다 `~/.claude/projects/<id>/memory/`에 `.md` 파일을 축적합니다. 관리 없이는:
 
-- 메모리 파일이 **낡아짐** (삭제된 기능이나 이전 버전을 참조)
+- Memory 파일이 **stale** 상태가 됨 (삭제된 기능이나 이전 버전을 참조)
 - **Orphan** 파일 누적 (디스크에 존재하지만 MEMORY.md에 미등록)
 - **Ghost** 참조 잔존 (MEMORY.md가 존재하지 않는 파일을 가리킴)
-- Index가 **bloat**되어 컨텍스트 윈도우 낭비
+- Index가 **bloat**되어 context window 낭비
 
-이를 관리하는 빌트인 도구는 없습니다. Ariadne가 이 공백을 채웁니다.
+이를 관리하는 built-in 도구는 없습니다. Ariadne가 이 공백을 채웁니다.
 
 ## 기능
 
@@ -25,47 +25,47 @@ Claude Code의 자동 메모리 시스템은 세션마다 `~/.claude/projects/<i
 
 1. **File Audit** — 세션 중 수정된 파일 탐지, orphan 아티팩트 확인
 2. **Memory Lifecycle Audit** — 버전 검증, staleness 검사, orphan/ghost 탐지, index 규칙 적용, anti-pattern 점검
-3. **세션 브리프** — MEMORY.md에 구조화된 세션 요약 작성
+3. **Session Brief** — MEMORY.md에 구조화된 세션 요약 작성
 
-추가로 **PreToolUse 훅** (`ariadne_thread.sh`)이 잘못된 메모리 파일 생성을 사전 차단합니다.
+추가로 **PreToolUse hook** (`ariadne_thread.sh`)이 잘못된 memory 파일 생성을 사전 차단합니다.
 
-### 훅 작동 방식
+### Hook 작동 방식
 
-훅은 우선순위 체인을 따르며 첫 번째 매칭 조건에서 조기 종료합니다:
+Hook은 우선순위 체인을 따르며 첫 번째 매칭 조건에서 조기 종료합니다:
 
 ```
-Write 도구 호출
+Write tool 호출
   │
-  ├─ 메모리 디렉토리 밖?      → 통과 (관할 외)
-  ├─ MEMORY.md 파일?          → 통과 (인덱스 편집은 항상 허용)
-  ├─ Write 도구가 아님?       → 통과 (기존 파일 Edit은 허용)
-  ├─ 파일이 이미 존재?        → 통과 (새 파일 생성만 검사)
+  ├─ Memory directory 밖?     → PASS (관할 외)
+  ├─ MEMORY.md 파일?          → PASS (index 편집은 항상 허용)
+  ├─ Write tool이 아님?       → PASS (기존 파일 Edit은 허용)
+  ├─ 파일이 이미 존재?        → PASS (새 파일 생성만 check)
   │
-  ├─ 검사 1: 본문 ≤3줄?      → 차단 "MEMORY.md에 인라인으로 작성하세요"
-  └─ 검사 2: type: feedback?  → 차단 "피드백은 MEMORY.md에 인라인으로"
+  ├─ Check 1: 본문 ≤3줄?     → BLOCK "MEMORY.md에 inline으로 작성하세요"
+  └─ Check 2: type: feedback? → BLOCK "feedback은 MEMORY.md에 inline으로"
 ```
 
-**검사 순서 참고**: feedback 타입 파일이 3줄 이하인 경우, 검사 1이 먼저 작동합니다.
-검사 1을 우회하기 위해 줄을 추가해도 검사 2가 차단합니다. feedback 파일은 길이와
+**Check 순서 참고**: feedback 타입 파일이 3줄 이하인 경우, Check 1이 먼저 작동합니다.
+Check 1을 우회하기 위해 줄을 추가해도 Check 2가 차단합니다. Feedback 파일은 길이와
 무관하게 항상 거부됩니다.
 
 ## 설치
 
-### 1. 스킬 복사
+### 1. Skill 복사
 
 ```bash
 mkdir -p ~/.claude/skills/ariadne-public
 cp SKILL.md ~/.claude/skills/ariadne-public/SKILL.md
 ```
 
-### 2. 훅 복사
+### 2. Hook 복사
 
 ```bash
 cp hooks/ariadne_thread.sh ~/.claude/hooks/ariadne_thread.sh
 chmod +x ~/.claude/hooks/ariadne_thread.sh
 ```
 
-### 3. 훅 등록
+### 3. Hook 등록
 
 `~/.claude/settings.json`의 `hooks.PreToolUse`에 추가:
 
@@ -90,7 +90,7 @@ chmod +x ~/.claude/hooks/ariadne_thread.sh
 
 [`examples/settings.json`](examples/settings.json)에서 전체 예시를 확인하세요.
 
-### 4. 메모리 디렉토리 설정 (선택)
+### 4. Memory directory 설정 (선택)
 
 ```bash
 export ARIADNE_MEMORY_DIR="$HOME/.claude/projects/<your-project-id>/memory"
